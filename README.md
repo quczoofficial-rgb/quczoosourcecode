@@ -1,1 +1,1 @@
-PICKZO – AI Powered Local Commerce Platform
+QUCZO – AI Powered Local Commerce Platform
