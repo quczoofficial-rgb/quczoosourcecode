@@ -5,10 +5,11 @@ const productService = require("../services/product.service");
 const router = express.Router();
 
 
-// GET ALL PRODUCTS
+// GET ALL PRODUCTS OR SEARCH PRODUCTS
 router.get("/", async (req, res) => {
   try {
-    const products = await productService.getProducts();
+    const { q } = req.query;
+    const products = await productService.getProducts(q);
 
     return res.status(200).json({
       success: true,

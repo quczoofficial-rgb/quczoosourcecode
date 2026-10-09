@@ -1,5 +1,61 @@
 const supabase = require("../config/supabase");
 
+// Product image lookup by name keywords → real Unsplash URLs
+// Order matters: more-specific keywords must come before shorter substrings
+const PRODUCT_IMAGE_KEYWORDS = [
+  ["notebook", "https://images.unsplash.com/photo-1616628188859-7a11abb6fcc9?w=400&q=80"],
+  ["detergent", "https://images.unsplash.com/photo-1563453392212-326f5e854473?w=400&q=80"],
+  ["shampoo", "https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?w=400&q=80"],
+  ["charger", "https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=400&q=80"],
+  ["drill", "https://images.unsplash.com/photo-1504148455328-c376907d081c?w=400&q=80"],
+  ["surf", "https://images.unsplash.com/photo-1584824486516-0555a07fc511?w=400&q=80"],
+  ["excel", "https://images.unsplash.com/photo-1584824486516-0555a07fc511?w=400&q=80"],
+  ["apple", "https://images.unsplash.com/photo-1560806887-1e4cd0b6fd6c?w=400&q=80"],
+  ["milk", "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=400&q=80"],
+  ["rice", "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&q=80"],
+  ["bulb", "https://images.unsplash.com/photo-1550989460-0adf9ea622e2?w=400&q=80"],
+  ["led", "https://images.unsplash.com/photo-1550989460-0adf9ea622e2?w=400&q=80"],
+];
+
+// Category-level fallback images
+const CATEGORY_IMAGE_MAP = {
+  dairy: "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=400&q=80",
+  grocery: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&q=80",
+  groceries: "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=400&q=80",
+  household: "https://images.unsplash.com/photo-1584824486516-0555a07fc511?w=400&q=80",
+  electronics: "https://images.unsplash.com/photo-1550989460-0adf9ea622e2?w=400&q=80",
+  tools: "https://images.unsplash.com/photo-1504148455328-c376907d081c?w=400&q=80",
+  stationery: "https://images.unsplash.com/photo-1531346878377-a541e4b11363?w=400&q=80",
+  "personal care": "https://images.unsplash.com/photo-1535585209827-a15fcdbc4c2d?w=400&q=80",
+  fruit: "https://images.unsplash.com/photo-1560806887-1e4cd0b6fd6c?w=400&q=80",
+  fruits: "https://images.unsplash.com/photo-1560806887-1e4cd0b6fd6c?w=400&q=80",
+};
+
+/** Resolve a product image URL */
+const getProductImageUrl = (product) => {
+  if (typeof product.image_url === "string" && product.image_url.trim()) {
+    return product.image_url.trim();
+  }
+  
+  if (!product.name) return "";
+  const nameLower = product.name.toLowerCase();
+  
+  for (const [keyword, url] of PRODUCT_IMAGE_KEYWORDS) {
+    if (nameLower.includes(keyword)) {
+      return url;
+    }
+  }
+
+  if (product.category) {
+    const catLower = product.category.toLowerCase();
+    if (CATEGORY_IMAGE_MAP[catLower]) {
+      return CATEGORY_IMAGE_MAP[catLower];
+    }
+  }
+
+  return "";
+};
+
 const formatProduct = (product) => {
   if (!product) return null;
 
@@ -14,6 +70,7 @@ const formatProduct = (product) => {
     reservedStock: product.reserved_stock || 0,
     availableStock:
       Number(product.stock) - Number(product.reserved_stock || 0),
+    imageUrl: getProductImageUrl(product),
     createdAt: product.created_at,
     updatedAt: product.updated_at,
   };
@@ -77,12 +134,18 @@ const createProduct = async (productData) => {
 };
 
 
-// GET ALL PRODUCTS
-const getProducts = async () => {
-  const { data, error } = await supabase
+// GET ALL PRODUCTS OR SEARCH BY QUERY
+const getProducts = async (query) => {
+  let queryBuilder = supabase
     .from("products")
     .select("*")
     .order("created_at", { ascending: false });
+
+  if (query && query.trim() !== "") {
+    queryBuilder = queryBuilder.ilike("name", `%${query.trim()}%`);
+  }
+
+  const { data, error } = await queryBuilder;
 
   if (error) {
     throw error;

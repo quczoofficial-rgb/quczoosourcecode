@@ -1,6 +1,9 @@
 const express = require("express");
+const { getNearbyShops } = require("../controllers/shop.controller");
 
 const router = express.Router();
+
+router.get("/nearby", getNearbyShops);
 
 router.get("/profile", (req, res) => {
   res.json({
